@@ -2,6 +2,9 @@ library(caret)
 library(corrplot)
 source("pml_write_files.R")
 
+# Set the seed for results reproducibility
+set.seed(7)
+
 # Load full dataset
 dataPath = "../data";
 fullDataName = "pml-training.csv";
@@ -10,11 +13,9 @@ testingDataName = "pml-testing.csv";
 fullDataPath = paste(dataPath, fullDataName, sep = "/");
 testingDataPath = paste(dataPath, testingDataName, sep = "/");
 
+# Reading the testing data removing the "#DIV/0!" strings 
 fullData = read.csv(fullDataPath, na.strings=c("NA", "#DIV/0!"));
 finalTestingData = read.csv(testingDataPath);
-
-# Set the seed for results reproducibility
-set.seed(7)
 
 # Split the training dataset into training and testing sub-datasets 
 # over the feature "classe" (60%, 40% medium dataset).
