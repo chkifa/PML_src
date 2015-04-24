@@ -1,0 +1,57 @@
+title: "PML Project"
+author: "Angelo Antonio Zuffianò"
+date: "24 Apr 2015"
+output: html_document
+---
+
+### Introduction
+The aim of the project was to use inertial sensor data to classify the correctness of a dumbell lifts activity performed by an eterogeneous group of partecipants. More information can be found at <http://groupware.les.inf.puc-rio.br/har>. 
+
+The provided data were organized into two datasets, **pml-training** and **pml-testing** respectively consisting of 19622 and 20 observations with 159 available predictors and one outcome variable named **classe** only present in the training dataset. The **pml-training** was chosen as the dataset on which designing, builnding and testing the prediction model, the **pml-testing** instead was reserved as smoking test dataset and used only for the course prediction assignment.
+
+The **caret** package was use to generate the training and testing datasets, to fit the model and to predict outcomes starting from new data. To guarantee the results reproducibility a seed was set for random number generation.
+
+```{r}
+library(caret)
+
+set.seed(7)
+```
+
+### Load, clean and split the pie
+Due to the presence of "#DIV/0!" errors in the **pml-training** dataset and to avoid possible issues in the data pre-processing and model training, the dataset was loaded replacing the "#DIV/0!" strings with the more traceable "NA" values.
+
+```{r}
+fullData = read.csv(fullDataPath, na.strings=c("NA", "#DIV/0!"));
+```
+
+Considered as **medium size**, the loaded dataset was then splitted over the outcome varible into two part, a **training** (sub-)dataset representing the **60%** of the original set and a **testing** (sub-)dataset containg the remaining **40%** of the data. The stratified random splitting was performed using the default behaviour of the data partitioning function available in the caret package. 
+
+```{r}
+inDataSet <- createDataPartition(fullData$classe, p = .60, list = FALSE)
+trainingSet <- fullData[inDataSet,]
+testingSet <- fullData[-inDataSet,]
+```
+
+# Removing predictors with NA values
+# Removing all the not meaningful predictors
+# Multicollinearity
+# Preprocessing (center and scale, ROC)
+# Fit the models (different models, why the random forest, why the chosen params, why and what cross-validation)
+# Prediction and confusion matrix (Testing part dataset and expected out of sample error)
+# Execution on the final testing dataset
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
