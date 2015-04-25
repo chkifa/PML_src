@@ -5,11 +5,11 @@ output: html_document
 ---
 
 ### Introduction
-The aim of the project was to use inertial sensor data to classify the correctness of a dumbell lifts activity performed by an eterogeneous group of partecipants. More information can be found at <http://groupware.les.inf.puc-rio.br/har>. 
+The aim of the project was to use inertial sensor data to classify the correctness of a dumbbell lifts activity performed by an eterogeneous group of partecipants. 
 
-The provided data were organized into two datasets, **pml-training** and **pml-testing** respectively consisting of 19622 and 20 observations with 159 available predictors and one outcome variable named **classe** only present in the training dataset. The **pml-training** was chosen as the dataset on which designing, builnding and testing the prediction model, the **pml-testing** instead was reserved as smoking test dataset and used only for the course prediction assignment.
+The provided data were organized into two datasets, **pml-training** and **pml-testing** respectively consisting of 19622 and 20 observations with 159 available predictors and 1 outcome variable named **classe**, only present in the training dataset and consisting of 5 different classes: A (correct execution), B-E (four different execution mistakes). The **pml-training** was chosen as the dataset on which designing, building and testing the prediction model, the **pml-testing** instead was reserved as smoking test dataset and used only for the course prediction assignment. For more information please refer to <http://groupware.les.inf.puc-rio.br/har>.
 
-The **caret** package was use to generate the training and testing datasets, to fit the model and to predict outcomes starting from new data. To guarantee the results reproducibility a seed was set for random number generation.
+The **caret** package was used to generate the training and testing datasets, to fit the model and to predict outcomes starting from new data. To guarantee the results reproducibility a seed was set for random number generation.
 
 ```{r}
 library(caret)
@@ -17,14 +17,14 @@ library(caret)
 set.seed(7)
 ```
 
-### Load, clean and split the pie
-Due to the presence of "#DIV/0!" errors in the **pml-training** dataset and to avoid possible issues in the data pre-processing and model training, the dataset was loaded replacing the "#DIV/0!" strings with the more traceable "NA" values.
+### Load, Clean and Split the Pie
+Due to the presence of *"#DIV/0!"* errors in the **pml-training** dataset and to avoid possible issues in the data pre-processing and model training, the dataset was loaded replacing the *"#DIV/0!"* strings with the more traceable *"NA"* values.
 
 ```{r}
 fullData = read.csv(fullDataPath, na.strings=c("NA", "#DIV/0!"));
 ```
 
-Considered as **medium size**, the loaded dataset was then splitted over the outcome varible into two part, a **training** (sub-)dataset representing the **60%** of the original set and a **testing** (sub-)dataset containg the remaining **40%** of the data. The stratified random splitting was performed using the default behaviour of the data partitioning function available in the caret package. 
+Considered as **medium size**, the loaded dataset was then splitted over the outcome varible into two parts, a **training** (sub-)dataset representing the **60%** of the original set and a **testing** (sub-)dataset containg the remaining **40%** of the data. The stratified random splitting was performed using the default behaviour of the data partitioning function available in the caret package. 
 
 ```{r}
 inDataSet <- createDataPartition(fullData$classe, p = .60, list = FALSE)
@@ -32,26 +32,47 @@ trainingSet <- fullData[inDataSet,]
 testingSet <- fullData[-inDataSet,]
 ```
 
-# Removing predictors with NA values
-# Removing all the not meaningful predictors
-# Multicollinearity
-# Preprocessing (center and scale, ROC)
-# Fit the models (different models, why the random forest, why the chosen params, why and what cross-validation)
-# Prediction and confusion matrix (Testing part dataset and expected out of sample error)
-# Execution on the final testing dataset
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+### The Good, the Bad and the Ugly: Predictors Selection
+In order to reduce the number of predictors to a smaller but meaningfull (read no information loss or information compression) group to be used during the model fitting, all the features having *"NA"* values were removed from both the training and the testing datasets.
 
 ```{r}
-summary(cars)
+filtTrainingSet <- trainingSet[,colSums(is.na(trainingSet)) == 0]
+filtTestingSet <- testingSet[,colSums(is.na(testingSet)) == 0]
 ```
 
-You can also embed plots, for example:
+Continuing with the predictors pruning, a set of features, strictly related to the way the data acquisition sessions were conducted by the research team, were also removed from the filtered datasets. This group of predictors included for instance timestamps, user name or acquisition windows information.
 
-```{r, echo=FALSE}
-plot(cars)
+```{r}
+filtTrainingSet <- subset(filtTrainingSet, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
+
+filtTestingSet <- subset(filtTestingSet, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The last step of features filtering was the analysis of the **multicollinearity** among the remaining set of predictors, in other words, how much correlated were the features. The correlation between the predictors in the training set (except for the outcome variable) was computed and all the precitors with a correlation higher than **0.90** were removed, this because those high correlated features did not add any additional useful information to the dataset.
+
+```{r}
+corrMat <- cor(filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")])
+highCorr <- findCorrelation(corrMat, 0.90)
+
+filtTrainingSet <- filtTrainingSet[,-highCorr]
+filtTestingSet <- filtTestingSet[,-highCorr]
+```
+
+The figure below depicts the computed correlation matrix after the predictors pruning in the training set.
+
+<div style="text-align:center">
+```{r echo=FALSE}
+library(corrplot)
+corrMatAfter <- cor(filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")])
+corrplot(corrMatAfter, order = "hclust")
+```
+</div>
+
+### Warming Up
+1 Preprocessing (center and scale, ROC)
+
+### I found myself deep in a Random Forest
+2 Fit the models (different models, why the random forest, why the chosen params, why and what cross-validation)
+3 Prediction and confusion matrix (Testing part dataset and expected out of sample error)
+
+### Conclusion

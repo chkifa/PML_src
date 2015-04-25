@@ -33,21 +33,8 @@ filtTrainingSet <- trainingSet[,colSums(is.na(trainingSet)) == 0]
 filtTestingSet <- testingSet[,colSums(is.na(testingSet)) == 0]
 
 # 2. remove all the not meaningful, used to construct the dataset or index features
-filtTrainingSet$X <- NULL
-filtTrainingSet$raw_timestamp_part_1 <- NULL
-filtTrainingSet$raw_timestamp_part_2 <- NULL
-filtTrainingSet$cvtd_timestamp <- NULL
-filtTrainingSet$new_window <- NULL
-filtTrainingSet$num_window <- NULL
-filtTrainingSet$user_name <- NULL
-
-filtTestingSet$X <- NULL
-filtTestingSet$raw_timestamp_part_1 <- NULL
-filtTestingSet$raw_timestamp_part_2 <- NULL
-filtTestingSet$cvtd_timestamp <- NULL
-filtTestingSet$new_window <- NULL
-filtTestingSet$num_window <- NULL
-filtTestingSet$user_name <- NULL
+filtTrainingSet <- subset(filtTrainingSet, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
+filtTestingSet <- subset(filtTestingSet, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
 
 # Multicollinearity
 # 3. compute features correlation and remove high correlated predictors (do not add any additional information)
@@ -69,29 +56,9 @@ preProcTesting <- predict(preProc, filtTestingSet[, !(colnames(filtTestingSet) =
 preProcTraining$classe <- filtTrainingSet$classe
 preProcTesting$classe <- filtTestingSet$classe
 
-# 6 Fit a model (train)
-# prepare training scheme
-#control <- trainControl(method="repeatedcv", number=100, repeats=3)
-# train the RPART model (accuracy sucks)
-#set.seed(7)
-#modelRpart <- train(preProcTraining$classe~., data=preProcTraining, method="rpart", trControl=control)
-# summarize the distribution
-#modelRpart
-
-# train the RF model (accuracy quite good, 98%)
-#control <- trainControl(method="cv", number=5, allowParallel=TRUE)
-#set.seed(7)
-#modelRf <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trControl=control, prox=TRUE, do.trace=TRUE)
-
-# train the RF model (accuracy quite good, 99%)
+# 6 train the RF model (accuracy quite good, 99%)
 train_control <- trainControl(method="repeatedcv", number=10, repeats=10, allowParallel=TRUE)
-set.seed(7)
 modFit <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trControl=train_control, ntree=500, prox=TRUE, do.trace=TRUE)
-
-# train the RF model (accuracy quite good, 98.9% 5,2,100?)
-#train_control_bis <- trainControl(method="repeatedcv", number=10, repeats=3, allowParallel=TRUE)
-#set.seed(7)
-#modFit_bis <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trControl=train_control_bis, ntree=100, prox=TRUE, do.trace=TRUE)
 
 #Check the accuracy of the model on the testing part of the dataset (99.41 %)
 predictions <- predict(modFit$finalModel, newdata=preProcTesting[, !(colnames(preProcTesting) == "classe")])
@@ -99,13 +66,8 @@ confusionMatrix(data=predictions, preProcTesting$classe)
 
 #Let's execute it on the final testing set
 filtFinalTestingData <- finalTestingData[,colSums(is.na(finalTestingData)) == 0]
-filtFinalTestingData$X <- NULL
-filtFinalTestingData$raw_timestamp_part_1 <- NULL
-filtFinalTestingData$raw_timestamp_part_2 <- NULL
-filtFinalTestingData$cvtd_timestamp <- NULL
-filtFinalTestingData$new_window <- NULL
-filtFinalTestingData$num_window <- NULL
-filtFinalTestingData$user_name <- NULL
+filtFinalTestingData <- subset(filtFinalTestingData, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
+
 filtFinalTestingData <- filtFinalTestingData[,-highCorr]
 preFinalTesting <- predict(preProc, filtFinalTestingData[, !(colnames(filtFinalTestingData) == "problem_id")])
 finalPredictions <- predict(modFit$finalModel, newdata=preFinalTesting[, !(colnames(preFinalTesting) == "problem_id")])
