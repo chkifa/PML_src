@@ -27,7 +27,7 @@ testingSet <- fullData[-inDataSet,]
 # the provided finalTestingData will be used only once when the model is trained and tested.
 
 # Features (predictors) selection, 
-# 1. let's start to remove predictors with NA values
+# 1. let's start to remove predictors with missing values
 filtTrainingSet <- trainingSet[,colSums(is.na(trainingSet)) == 0]
 filtTestingSet <- testingSet[,colSums(is.na(testingSet)) == 0]
 
