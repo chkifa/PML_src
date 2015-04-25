@@ -101,6 +101,7 @@ train_control <- trainControl(method="repeatedcv", number=10, repeats=10, allowP
 The model was then fit using all the available predictors (except for the outcome), the *OOB* (Out-Of-Bag) as error estimate, **Accuracy** as metric, the default number of trees *500* and enabling the proximity matrix.
 
 ```{r, include=FALSE}
+# This is used to avoid time consuming model fitting, fitModel.RData contains the modFit variable which is a pre-trained rf model.
 if(file.exists("fitModel.RData")) {
   load("fitModel.RData")
 } else {
