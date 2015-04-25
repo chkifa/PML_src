@@ -1,8 +1,17 @@
 title: "PML Project"
 author: "Angelo Antonio Zuffianò"
 date: "24 Apr 2015"
-output: html_document
+output:
+  html_document:
+    pandoc_args: [
+      "+RTS", "-K64m",
+      "-RTS"
+    ]
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
 
 ### Introduction
 The aim of the project was to use inertial sensor data to classify the correctness of a dumbbell lifts activity performed by an eterogeneous group of partecipants. 
@@ -58,21 +67,71 @@ filtTrainingSet <- filtTrainingSet[,-highCorr]
 filtTestingSet <- filtTestingSet[,-highCorr]
 ```
 
-The figure below depicts the computed correlation matrix after the predictors pruning in the training set.
+At the end of the predictors selection process, only 45 features were selected as candidates for the training. The figure below depicts the computed correlation matrix after the predictors pruning for the training set.
 
 <div style="text-align:center">
-```{r echo=FALSE}
+```{r, echo=FALSE}
 library(corrplot)
 corrMatAfter <- cor(filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")])
 corrplot(corrMatAfter, order = "hclust")
 ```
+
 </div>
 
-### Warming Up
-1 Preprocessing (center and scale, ROC)
+As a final pre-processing step, the filtered datasets were then **standardized** using the *"center"* and *"scale"* methods available in the pre-process caret function. The outcomes columns, previously excluded from the standardization, were then added again to the datasets.
+
+```{r}
+preProc <- preProcess(filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")], 
+                      method = c("center", "scale"))
+
+preProcTraining <- predict(preProc, filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")])
+preProcTesting <- predict(preProc, filtTestingSet[, !(colnames(filtTestingSet) == "classe")])
+
+preProcTraining$classe <- filtTrainingSet$classe
+preProcTesting$classe <- filtTestingSet$classe
+```
 
 ### I found myself deep in a Random Forest
-2 Fit the models (different models, why the random forest, why the chosen params, why and what cross-validation)
-3 Prediction and confusion matrix (Testing part dataset and expected out of sample error)
+Due to its good tradeoff of accuracy/tuning-complexity the **random forest** was chosen as classification model. To reduce the risk of **overfitting** the *repeated K–fold cross–validation* was chosen as resapmling method in the training control function considering *10 folds* and *10 repetitions* (experimental values).
 
-### Conclusion
+```{r}
+train_control <- trainControl(method="repeatedcv", number=10, repeats=10, allowParallel=TRUE)
+```
+
+The model was then fit using all the available predictors (except for the outcome), the *OOB* (Out-Of-Bag) as error estimate, **Accuracy** as metric, the default number of trees *500* and enabling the proximity matrix.
+
+```{r, include=FALSE}
+if(file.exists("fitModel.RData")) {
+  load("fitModel.RData")
+} else {
+  modFit <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trControl=train_control, ntree=500, prox=TRUE)
+}
+```
+
+```{r, eval=FALSE}
+modFit <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trControl=train_control, ntree=500, prox=TRUE)
+```
+
+```{r}
+print(modFit)
+```
+
+As shown by the model summary, the highest accuracy (**99%**) was reached with a number of randomly sampled variables (at each split) of 23, this is also depicted by the figure below.
+
+<div style="text-align:center">
+```{r, echo=FALSE}
+plot(modFit)
+```
+
+</div>
+
+The confusion matrix of the final model shows the obtained classification error for each predicted class, with maximum value representing the **in-sample error**.
+
+```{r}
+print(modFit$finalModel$confusion)
+```
+
+2. What is Kappa
+3. Prediction and confusion matrix (Testing part dataset and expected out of sample error)
+
+### Results
