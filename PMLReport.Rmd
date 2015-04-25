@@ -1,4 +1,5 @@
-title: "PML Project"
+---
+title: "Practical Machine Learning - Writeup"
 author: "Angelo Antonio Zuffianò"
 date: "24 Apr 2015"
 output:
@@ -13,10 +14,12 @@ output:
 knitr::opts_chunk$set(cache=TRUE)
 ```
 
-### Introduction
+### Prologue
 The aim of the project was to use inertial sensor data to classify the correctness of a dumbbell lifts activity performed by an eterogeneous group of partecipants. 
 
-The provided data were organized into two datasets, **pml-training** and **pml-testing** respectively consisting of 19622 and 20 observations with 159 available predictors and 1 outcome variable named **classe**, only present in the training dataset and consisting of 5 different classes: A (correct execution), B-E (four different execution mistakes). The **pml-training** was chosen as the dataset on which designing, building and testing the prediction model, the **pml-testing** instead was reserved as smoking test dataset and used only for the course prediction assignment. For more information please refer to <http://groupware.les.inf.puc-rio.br/har>.
+The provided data were organized into two datasets, **pml-training** and **pml-testing** respectively consisting of 19622 and 20 observations with 159 available predictors and 1 outcome variable named **classe**. The outcome, only present in the training dataset, consisted of 5 different classes: A (correct execution), B-E (four different execution mistakes). 
+
+The **pml-training** was chosen as the dataset on which designing, building and testing the prediction model, the **pml-testing** instead was reserved as smoking test dataset and used only for the course prediction assignment. For more information please refer to <http://groupware.les.inf.puc-rio.br/har>.
 
 The **caret** package was used to generate the training and testing datasets, to fit the model and to predict outcomes starting from new data. To guarantee the results reproducibility a seed was set for random number generation.
 
@@ -26,14 +29,18 @@ library(caret)
 set.seed(7)
 ```
 
+<hr/>
+
 ### Load, Clean and Split the Pie
-Due to the presence of *"#DIV/0!"* errors in the **pml-training** dataset and to avoid possible issues in the data pre-processing and model training, the dataset was loaded replacing the *"#DIV/0!"* strings with the more traceable *"NA"* values.
+Due to the presence of *"#DIV/0!"* errors in the **pml-training** dataset and to avoid possible issues in the data pre-processing and model training, the dataset was loaded replacing the *"#DIV/0!"* strings with the more traceable *"NA"* (missing) values.
 
 ```{r}
 fullData = read.csv(fullDataPath, na.strings=c("NA", "#DIV/0!"));
 ```
 
-Considered as **medium size**, the loaded dataset was then splitted over the outcome varible into two parts, a **training** (sub-)dataset representing the **60%** of the original set and a **testing** (sub-)dataset containg the remaining **40%** of the data. The stratified random splitting was performed using the default behaviour of the data partitioning function available in the caret package. 
+Considered as **medium size**, the loaded dataset was then splitted over the outcome variable into two parts, a **training** (sub-)dataset representing the **60%** of the original set and a **testing** (sub-)dataset containing the remaining **40%** of the data. 
+
+The stratified random splitting was performed using the default behaviour of the data partitioning function available in the *caret* package. 
 
 ```{r}
 inDataSet <- createDataPartition(fullData$classe, p = .60, list = FALSE)
@@ -41,15 +48,17 @@ trainingSet <- fullData[inDataSet,]
 testingSet <- fullData[-inDataSet,]
 ```
 
+<hr/>
+
 ### The Good, the Bad and the Ugly: Predictors Selection
-In order to reduce the number of predictors to a smaller but meaningfull (read no information loss or information compression) group to be used during the model fitting, all the features having *"NA"* values were removed from both the training and the testing datasets.
+In order to reduce the number of predictors to a smaller but meaningful group (information compression with no loss) to be used during the model fitting, all the features having missing values were removed from both the training and the testing datasets.
 
 ```{r}
 filtTrainingSet <- trainingSet[,colSums(is.na(trainingSet)) == 0]
 filtTestingSet <- testingSet[,colSums(is.na(testingSet)) == 0]
 ```
 
-Continuing with the predictors pruning, a set of features, strictly related to the way the data acquisition sessions were conducted by the research team, were also removed from the filtered datasets. This group of predictors included for instance timestamps, user name or acquisition windows information.
+Continuing with the predictors pruning, a set of features, strictly related to the way the data acquisition sessions were conducted by the research team, were also removed from the filtered datasets. This group of predictors includes for instance timestamps, user name or acquisition windows information.
 
 ```{r}
 filtTrainingSet <- subset(filtTrainingSet, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
@@ -57,7 +66,7 @@ filtTrainingSet <- subset(filtTrainingSet, select=-c(X, raw_timestamp_part_1, ra
 filtTestingSet <- subset(filtTestingSet, select=-c(X, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window, user_name))
 ```
 
-The last step of features filtering was the analysis of the **multicollinearity** among the remaining set of predictors, in other words, how much correlated were the features. The correlation between the predictors in the training set (except for the outcome variable) was computed and all the precitors with a correlation higher than **0.90** were removed, this because those high correlated features did not add any additional useful information to the dataset.
+The last step of features filtering was the analysis of the **multicollinearity** among the remaining set of predictors, in other words, how much correlated the features were. The correlation between the predictors in the training set (except for the outcome variable) was computed and all the predictors with a correlation higher than **0.90** were removed from the set. The meaning behind a correlation-based pruning is that highly correlated features do not add any additional useful information to the ones already present in the remaining variables.
 
 ```{r}
 corrMat <- cor(filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")])
@@ -78,7 +87,7 @@ corrplot(corrMatAfter, order = "hclust")
 
 </div>
 
-As a final pre-processing step, the filtered datasets were then **standardized** using the *"center"* and *"scale"* methods available in the pre-process caret function. The outcomes columns, previously excluded from the standardization, were then added again to the datasets.
+As a final pre-processing step, the filtered datasets were then **standardized** using the *"center"* and *"scale"* methods available in the pre-process *caret* function. The outcomes columns, previously excluded from the standardization, were then added again to the datasets.
 
 ```{r}
 preProc <- preProcess(filtTrainingSet[, !(colnames(filtTrainingSet) == "classe")], 
@@ -91,14 +100,16 @@ preProcTraining$classe <- filtTrainingSet$classe
 preProcTesting$classe <- filtTestingSet$classe
 ```
 
+<hr/>
+
 ### I found myself deep in a Random Forest
-Due to its good tradeoff of accuracy/tuning-complexity the **random forest** was chosen as classification model. To reduce the risk of **overfitting** the *repeated K–fold cross–validation* was chosen as resapmling method in the training control function considering *10 folds* and *10 repetitions* (experimental values).
+Due to its good tradeoff of accuracy/tuning-complexity the **random forest** was chosen as classification model. To reduce the risk of **overfitting** the *repeated K–fold cross–validation* was chosen as resampling method in the training control function, considering *10 folds* and *10 repetitions* (experimental values).
 
 ```{r}
 train_control <- trainControl(method="repeatedcv", number=10, repeats=10, allowParallel=TRUE)
 ```
 
-The model was then fit using all the available predictors (except for the outcome), the *OOB* (Out-Of-Bag) as error estimate, **Accuracy** as metric, the default number of trees *500* and enabling the proximity matrix.
+The model was then fit using all the available predictors (except for the outcome), the *OOB* (Out-Of-Bag) as error estimate, **accuracy** as metric, the default number of *500* trees and enabling the proximity matrix.
 
 ```{r, include=FALSE}
 # This is used to avoid time consuming model fitting, fitModel.RData contains the modFit variable which is a pre-trained rf model.
@@ -117,7 +128,7 @@ modFit <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trC
 print(modFit)
 ```
 
-As shown by the model summary, the highest accuracy (**99%**) was reached with a number of randomly sampled variables (at each split) of 23, this is also depicted by the figure below.
+As shown by the model summary, the highest accuracy of **99%** was reached with 23 randomly sampled variables (at each split), this is also depicted by the figure below.
 
 <div style="text-align:center">
 ```{r, echo=FALSE}
@@ -126,13 +137,32 @@ plot(modFit)
 
 </div>
 
-The confusion matrix of the final model shows the obtained classification error for each predicted class, with maximum value representing the **in-sample error**.
+The confusion matrix of the final model shows the obtained classification error for each predicted class.
 
 ```{r}
 print(modFit$finalModel$confusion)
 ```
 
-2. What is Kappa
-3. Prediction and confusion matrix (Testing part dataset and expected out of sample error)
+The plot below shows instead the error with respect to the number of used trees, it is clear from the graphs how slowly the error converges to zero as the number of trees increases.
 
-### Results
+<div style="text-align:center">
+```{r, echo=FALSE}
+plot(modFit$finalModel)
+```
+
+</div>
+
+### The Acid Test
+The trained model was then applied to the testing dataset, which was not used for training and for this reason containing completely new data. The predicted outcomes were compared with the outcomes stored in the testing set and a **confusion matrix** was computed to retrieve the estimated **out-sample error** of at about **0.59%**.
+
+```{r}
+library(randomForest) 
+
+predictions <- predict(modFit$finalModel, newdata=preProcTesting[, !(colnames(preProcTesting) == "classe")])
+confusionMatrix(data=predictions, preProcTesting$classe)
+```
+
+<hr/>
+
+### Epilogue
+According to the produced tests results, the implemented model even if not optimal and slow to train, with its high levels of accuracy and agreement (*Kappa* statistic) seemed to perform quite well and to be robust to the overfitting problem.
