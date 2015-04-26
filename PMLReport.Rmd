@@ -109,7 +109,7 @@ Due to its good tradeoff of accuracy/tuning-complexity the **random forest** was
 train_control <- trainControl(method="repeatedcv", number=10, repeats=10, allowParallel=TRUE)
 ```
 
-The model was then fit using all the available predictors (except for the outcome), the *OOB* (Out-Of-Bag) as error estimate, **accuracy** as metric, the default number of *500* trees and enabling the proximity matrix.
+The model was then fit using all the available predictors (except for the outcome), the *OOB* (Out-Of-Bag) as error estimate, **Accuracy** and **Kappa** as metrics, the default number of *500* trees and enabling the proximity matrix.
 
 ```{r, include=FALSE}
 # This is used to avoid time consuming model fitting, fitModel.RData contains the modFit variable which is a pre-trained rf model.
@@ -128,11 +128,11 @@ modFit <- train(preProcTraining$classe~., data=preProcTraining, method="rf", trC
 print(modFit)
 ```
 
-As shown by the model summary, the highest accuracy of **99%** was reached with 23 randomly sampled variables (at each split), this is also depicted by the figure below.
+As shown by the model summary, the highest accuracy of **99%** was reached with 23 randomly sampled variables (at each split). The *resampleHist* function was used to obtain the resampling distribution (density) of the statistics *Accuracy* and *Kappa* for the fit model.
 
 <div style="text-align:center">
 ```{r, echo=FALSE}
-plot(modFit)
+resampleHist(modFit)
 ```
 
 </div>
@@ -143,7 +143,7 @@ The confusion matrix of the final model shows the obtained classification error 
 print(modFit$finalModel$confusion)
 ```
 
-The plot below shows instead the error with respect to the number of used trees, it is clear from the graphs how slowly the error converges to zero as the number of trees increases.
+The plot below shows instead the error with respect to the number of used trees, it is clear from the graph how slowly the error converges to zero as the number of trees increases.
 
 <div style="text-align:center">
 ```{r, echo=FALSE}
@@ -151,6 +151,21 @@ plot(modFit$finalModel)
 ```
 
 </div>
+
+To have an idea of which predictor had the most important role in the model training and in the classification process, the **importance** statistic was computed starting from the model and using the *varImp* function.
+
+```{r}
+rfImp <- varImp(modFit, scale = TRUE)
+```
+
+<div style="text-align:center">
+```{r, echo=FALSE}
+plot(rfImp)
+```
+
+</div>
+
+As shown in the graph above, the most influential variables for the trained model were the *yaw_belt* and the *pitch_forearm* predictors.
 
 ### The Acid Test
 The trained model was then applied to the testing dataset, which was not used for training and for this reason containing completely new data. The predicted outcomes were compared with the outcomes stored in the testing set and a **confusion matrix** was computed to retrieve the estimated **out-sample error** of at about **0.59%**.
